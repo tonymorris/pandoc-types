@@ -108,12 +108,12 @@ attribute @include=FILENAME@ with the contents of @FILENAME@:
 'queryWith' can be used, for example, to compile a list of URLs
 linked to in a document:
 
-> extractURL :: Inline -> [String]
+> extractURL :: Inline -> [Text]
 > extractURL (Link _ (u,_)) = [u]
 > extractURL (Image _ _ (u,_)) = [u]
 > extractURL _ = []
 >
-> extractURLs :: Pandoc -> [String]
+> extractURLs :: Pandoc -> [Text]
 > extractURLs = queryWith extractURL
 
 -}

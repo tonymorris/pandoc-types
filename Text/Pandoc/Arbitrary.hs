@@ -1,5 +1,6 @@
 {-# OPTIONS_GHC -fno-warn-orphans #-}
-{-# LANGUAGE TypeSynonymInstances, FlexibleInstances, ScopedTypeVariables #-}
+{-# LANGUAGE TypeSynonymInstances, FlexibleInstances, ScopedTypeVariables,
+  OverloadedStrings #-}
 -- provides Arbitrary instance for Pandoc types
 module Text.Pandoc.Arbitrary ()
 where
@@ -7,10 +8,13 @@ import Test.QuickCheck
 import Control.Monad (forM, liftM, liftM2)
 import Text.Pandoc.Definition
 import Text.Pandoc.Builder
+import Data.Text (Text)
+import qualified Data.Text as Text
 
-realString :: Gen String
-realString = resize 8 $ listOf $ frequency [ (9, elements [' '..'\127'])
-                                           , (1, elements ['\128'..'\9999']) ]
+realText :: Gen Text
+realText = resize 8 $ fmap Text.pack $ listOf $
+                    frequency [ (9, elements [' '..'\127'])
+                                  , (1, elements ['\128'..'\9999']) ]
 
 arbAttr :: Gen Attr
 arbAttr = do
@@ -36,9 +40,9 @@ arbInlines n = listOf1 (arbInline n) `suchThat` (not . startsWithSpace)
 -- restrict to 3 levels of nesting max; otherwise we get
 -- bogged down in indefinitely large structures
 arbInline :: Int -> Gen Inline
-arbInline n = frequency $ [ (60, liftM Str realString)
+arbInline n = frequency $ [ (60, liftM Str realText)
                           , (60, return Space)
-                          , (10, liftM2 Code arbAttr realString)
+                          , (10, liftM2 Code arbAttr realText)
                           , (5,  elements [ RawInline (Format "html") "<a id=\"eek\">"
                                           , RawInline (Format "latex") "\\my{command}" ])
                           ] ++ [ x | x <- nesters, n > 1]
@@ -52,17 +56,17 @@ arbInline n = frequency $ [ (60, liftM Str realString)
                               x2 <- arbInlines (n-1)
                               return $ Quoted x1 x2)
                    , (10,  do x1 <- arbitrary
-                              x2 <- realString
+                              x2 <- realText
                               return $ Math x1 x2)
                    , (10,  do x0 <- arbAttr
                               x1 <- arbInlines (n-1)
-                              x3 <- realString
-                              x2 <- realString
+                              x3 <- realText
+                              x2 <- realText
                               return $ Link x0 x1 (x2,x3))
                    , (10,  do x0 <- arbAttr
                               x1 <- arbInlines (n-1)
-                              x3 <- realString
-                              x2 <- realString
+                              x3 <- realText
+                              x2 <- realText
                               return $ Image x0 x1 (x2,x3))
                    , (2,  liftM2 Cite arbitrary (arbInlines 1))
                    , (2,  liftM Note $ resize 3 $ listOf1 $ arbBlock (n-1))
@@ -74,7 +78,7 @@ instance Arbitrary Block where
 arbBlock :: Int -> Gen Block
 arbBlock n = frequency $ [ (10, liftM Plain $ arbInlines (n-1))
                          , (15, liftM Para $ arbInlines (n-1))
-                         , (5,  liftM2 CodeBlock arbAttr realString)
+                         , (5,  liftM2 CodeBlock arbAttr realText)
                          , (3,  liftM LineBlock $
                                   liftM2 (:)
                                          (arbInlines $ (n - 1) `mod` 3)
@@ -127,7 +131,8 @@ instance Arbitrary CitationMode where
 
 instance Arbitrary Citation where
         arbitrary
-          = do x1 <- listOf $ elements $ ['a'..'z'] ++ ['0'..'9'] ++ ['_']
+          = do x1 <- fmap Text.pack $
+                      listOf $ elements $ ['a'..'z'] ++ ['0'..'9'] ++ ['_']
                x2 <- arbInlines 1
                x3 <- arbInlines 1
                x4 <- arbitrary

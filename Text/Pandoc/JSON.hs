@@ -60,11 +60,11 @@ or (making capitalize.hs executable)
 > import Data.Char (toUpper)
 >
 > main :: IO ()
-> main = toJSONFilter capitalizeStrings
+> main = toJSONFilter capitalizeTexts
 >
-> capitalizeStrings :: Inline -> Inline
-> capitalizeStrings (Str s) = Str $ map toUpper s
-> capitalizeStrings x       = x
+> capitalizeTexts :: Inline -> Inline
+> capitalizeTexts (Str s) = Str $ map toUpper s
+> capitalizeTexts x       = x
 
 -}
 
@@ -77,6 +77,8 @@ import Text.Pandoc.Walk
 import Text.Pandoc.Generic
 import Data.Maybe (listToMaybe)
 import Data.Data
+import Data.Text (Text)
+import qualified Data.Text as Text
 import qualified Data.ByteString.Lazy as BL
 import Data.Aeson
 import System.Environment (getArgs)
@@ -90,8 +92,8 @@ import System.Environment (getArgs)
 -- @a -> IO a@ where @a@ = 'Block', 'Inline','Pandoc', 'Meta', or 'MetaValue'.
 --
 -- If your transformation needs to be sensitive to the script's arguments,
--- use a function of type @[String] -> a -> a@ (with @a@ constrained as above).
--- The @[String]@ will be populated with the script's arguments.
+-- use a function of type @[Text] -> a -> a@ (with @a@ constrained as above).
+-- The @[Text]@ will be populated with the script's arguments.
 --
 -- An alternative is to use the type @Maybe Format -> a -> a@.
 -- This is appropriate when the first argument of the script (if present)
@@ -124,8 +126,11 @@ instance Data a => ToJSONFilter (a -> IO [a]) where
      either error id . eitherDecode' >>=
      BL.putStr . encode
 
-instance (ToJSONFilter a) => ToJSONFilter ([String] -> a) where
-  toJSONFilter f = getArgs >>= toJSONFilter . f
+instance (ToJSONFilter a) => ToJSONFilter ([Text] -> a) where
+  toJSONFilter f = getArgs >>= toJSONFilter . f . map Text.pack
 
 instance (ToJSONFilter a) => ToJSONFilter (Maybe Format -> a) where
-  toJSONFilter f = getArgs >>= toJSONFilter . f . fmap Format . listToMaybe
+  toJSONFilter f = getArgs >>= toJSONFilter . f . fmap Format .
+     (\args -> case args of
+                    []    -> Nothing
+                    (a:_) -> Just (Text.pack a))

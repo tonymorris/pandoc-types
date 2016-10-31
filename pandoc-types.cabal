@@ -52,6 +52,7 @@ Library
                      ghc-prim >= 0.2,
                      bytestring >= 0.9 && < 0.11,
                      aeson >= 0.6.2 && < 1.1,
+                     text >= 0.11 && < 1.3,
                      QuickCheck >= 2
   if impl(ghc < 7.10)
     Build-depends:   deepseq-generics >= 0.1 && < 0.2
@@ -67,6 +68,7 @@ test-suite test-pandoc-types
                        aeson >= 0.6.2 && < 1.1,
                        containers >= 0.3,
                        bytestring >= 0.9 && < 0.11,
+                       text >= 0.11 && < 1.3,
                        test-framework >= 0.3 && < 0.9,
                        test-framework-hunit >= 0.2 && < 0.4,
                        test-framework-quickcheck2 >= 0.2.9 && < 0.4,

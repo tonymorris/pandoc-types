@@ -1,6 +1,8 @@
 {-# LANGUAGE OverloadedStrings, QuasiQuotes #-}
 
 import Text.Pandoc.Definition
+import Data.Text (Text)
+import qualified Data.Text as Text
 import Test.HUnit (Assertion, assertEqual, assertFailure)
 import Text.Pandoc.Arbitrary ()
 import Data.Aeson (FromJSON, ToJSON, encode, decode)

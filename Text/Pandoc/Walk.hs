@@ -77,12 +77,12 @@ headers in a document with regular paragraphs in ALL CAPS:
 'query' can be used, for example, to compile a list of URLs
 linked to in a document:
 
-> extractURL :: Inline -> [String]
+> extractURL :: Inline -> [Text]
 > extractURL (Link _ _ (u,_)) = [u]
 > extractURL (Image _ _ (u,_)) = [u]
 > extractURL _ = []
 >
-> extractURLs :: Pandoc -> [String]
+> extractURLs :: Pandoc -> [Text]
 > extractURLs = query extractURL
 -}
 

@@ -1,5 +1,5 @@
 {-# LANGUAGE OverloadedStrings, DeriveDataTypeable, DeriveGeneric,
-FlexibleContexts, GeneralizedNewtypeDeriving, PatternGuards, CPP #-}
+FlexibleContexts, GeneralizedNewtypeDeriving, PatternGuards, CPP, TypeFamilies, FlexibleInstances, MultiParamTypeClasses, TemplateHaskell, RankNTypes #-}
 
 {-
 Copyright (c) 2006-2016, John MacFarlane
@@ -73,6 +73,7 @@ module Text.Pandoc.Definition ( Pandoc(..)
                               , pandocTypesVersion
                               ) where
 
+import Control.Lens hiding ((.=))
 import Data.Generics (Data, Typeable)
 import Data.Ord (comparing)
 import Data.Aeson hiding (Null)
@@ -609,3 +610,287 @@ instance NFData Pandoc where rnf = genericRnf
 
 pandocTypesVersion :: Version
 pandocTypesVersion = version
+
+instance Wrapped Meta where
+  type Unwrapped Meta = M.Map String MetaValue
+  _Wrapped' =
+    iso
+      (\(Meta x) -> x)
+      Meta
+
+instance Meta ~ t0 => Rewrapped Meta t0
+
+class HasMeta a where
+  meta ::
+    Lens'
+      a
+      Meta
+
+instance HasMeta Meta where
+  meta =
+    id
+
+instance HasMeta Pandoc where
+  meta =
+    lens
+      (\(Pandoc m _) -> m)
+      (\(Pandoc _ b) m -> Pandoc m b)
+
+instance AsEmpty Meta where
+  _Empty =
+    _Wrapped . _Empty
+
+instance Each Meta Meta MetaValue MetaValue where
+  each =
+    _Wrapped . each
+
+type instance Index Meta = String
+type instance IxValue Meta = MetaValue
+instance Ixed Meta where
+  ix i =
+    _Wrapped . ix i
+
+instance At Meta where
+  at i =
+    _Wrapped . at i
+
+class HasBlockList a where
+  blockList ::
+    Lens'
+      a
+      [Block]
+
+instance HasBlockList [Block] where
+  blockList =
+    id
+
+instance HasBlockList Pandoc where
+  blockList =
+    lens
+      (\(Pandoc _ b) -> b)
+      (\(Pandoc m _) b -> Pandoc m b)
+
+class HasBlocks a where
+  blocks ::
+    Traversal'
+      a
+      Block
+
+instance HasBlocks Block where
+  blocks =
+    id
+
+instance HasBlocks Pandoc where
+  blocks f (Pandoc m b) =
+    Pandoc m <$> traverse f b
+
+class HasMetaValue a where
+  metaValue ::
+    Lens'
+      a
+      MetaValue
+
+instance HasMetaValue MetaValue where
+  metaValue =
+    id
+
+class HasMetaValues a where
+  metaValues ::
+    Traversal'
+      a
+      MetaValue
+
+instance HasMetaValues MetaValue where
+  metaValues =
+    id
+
+instance HasMetaValues Meta where
+  metaValues =
+    meta . _Wrapped . traverse
+
+class AsMetaMap a where
+  _MetaMap ::
+    Prism'
+      a
+      (M.Map String MetaValue)
+
+instance AsMetaMap MetaValue where
+  _MetaMap =
+    prism'
+      MetaMap
+      (\m -> case m of
+               MetaMap n -> Just n
+               _ -> Nothing)
+
+instance AsMetaMap Meta where
+  _MetaMap =
+    _Wrapped
+
+class AsMetaList a where
+  _MetaList ::
+    Prism'
+      a
+      [MetaValue]
+
+instance AsMetaList MetaValue where
+  _MetaList =
+    prism'
+      MetaList
+      (\m -> case m of
+               MetaList n -> Just n
+               _ -> Nothing)
+
+class AsMetaBool a where
+  _MetaBool ::
+    Prism'
+      a
+      Bool
+
+instance AsMetaBool MetaValue where
+  _MetaBool =
+    prism'
+      MetaBool
+      (\m -> case m of
+               MetaBool n -> Just n
+               _ -> Nothing)
+
+class AsMetaString a where
+  _MetaString ::
+    Prism'
+      a
+      String
+
+instance AsMetaString MetaValue where
+  _MetaString =
+    prism'
+      MetaString
+      (\m -> case m of
+               MetaString n -> Just n
+               _ -> Nothing)
+
+class AsMetaInlines a where
+  _MetaInlines ::
+    Prism'
+      a
+      [Inline]
+
+instance AsMetaInlines MetaValue where
+  _MetaInlines =
+    prism'
+      MetaInlines
+      (\m -> case m of
+               MetaInlines n -> Just n
+               _ -> Nothing)
+
+class AsMetaBlocks a where
+  _MetaBlocks ::
+    Prism'
+      a
+      [Block]
+
+instance AsMetaBlocks MetaValue where
+  _MetaBlocks =
+    prism'
+      MetaBlocks
+      (\m -> case m of
+               MetaBlocks n -> Just n
+               _ -> Nothing)
+
+instance HasBlocks MetaValue where
+  blocks =
+    _MetaBlocks . traverse
+
+{-
+
+data Alignment = AlignLeft
+               | AlignRight
+               | AlignCenter
+               | AlignDefault
+
+type ListAttributes = (Int, ListNumberStyle, ListNumberDelim)
+
+data ListNumberStyle = DefaultStyle
+                     | Example
+                     | Decimal
+                     | LowerRoman
+                     | UpperRoman
+                     | LowerAlpha
+                     | UpperAlpha
+
+data ListNumberDelim = DefaultDelim
+                     | Period
+                     | OneParen
+                     | TwoParens
+
+type Attr = (String, [String], [(String, String)])
+
+type TableCell = [Block]
+
+newtype Format = Format String
+
+data Block
+    = Plain [Inline]        -- ^ Plain text, not a paragraph
+    | Para [Inline]         -- ^ Paragraph
+    | LineBlock [[Inline]]  -- ^ Multiple non-breaking lines
+    | CodeBlock Attr String -- ^ Code block (literal) with attributes
+    | RawBlock Format String -- ^ Raw block
+    | BlockQuote [Block]    -- ^ Block quote (list of blocks)
+    | OrderedList ListAttributes [[Block]] -- ^ Ordered list (attributes
+                            -- and a list of items, each a list of blocks)
+    | BulletList [[Block]]  -- ^ Bullet list (list of items, each
+                            -- a list of blocks)
+    | DefinitionList [([Inline],[[Block]])]  -- ^ Definition list
+                            -- Each list item is a pair consisting of a
+                            -- term (a list of inlines) and one or more
+                            -- definitions (each a list of blocks)
+    | Header Int Attr [Inline] -- ^ Header - level (integer) and text (inlines)
+    | HorizontalRule        -- ^ Horizontal rule
+    | Table [Inline] [Alignment] [Double] [TableCell] [[TableCell]]  -- ^ Table,
+                            -- with caption, column alignments (required),
+                            -- relative column widths (0 = default),
+                            -- column headers (each a list of blocks), and
+                            -- rows (each a list of lists of blocks)
+    | Div Attr [Block]      -- ^ Generic block container with attributes
+    | Null                  -- ^ Nothing
+
+data QuoteType = SingleQuote | DoubleQuote
+
+type Target = (String, String)
+
+data MathType = DisplayMath | InlineMath
+
+data Inline
+    = Str String            -- ^ Text (string)
+    | Emph [Inline]         -- ^ Emphasized text (list of inlines)
+    | Strong [Inline]       -- ^ Strongly emphasized text (list of inlines)
+    | Strikeout [Inline]    -- ^ Strikeout text (list of inlines)
+    | Superscript [Inline]  -- ^ Superscripted text (list of inlines)
+    | Subscript [Inline]    -- ^ Subscripted text (list of inlines)
+    | SmallCaps [Inline]    -- ^ Small caps text (list of inlines)
+    | Quoted QuoteType [Inline] -- ^ Quoted text (list of inlines)
+    | Cite [Citation]  [Inline] -- ^ Citation (list of inlines)
+    | Code Attr String      -- ^ Inline code (literal)
+    | Space                 -- ^ Inter-word space
+    | SoftBreak             -- ^ Soft line break
+    | LineBreak             -- ^ Hard line break
+    | PageBreak             -- ^ Force new page
+    | Math MathType String  -- ^ TeX math (literal)
+    | RawInline Format String -- ^ Raw inline
+    | Link Attr [Inline] Target  -- ^ Hyperlink: alt text (list of inlines), target
+    | Image Attr [Inline] Target -- ^ Image:  alt text (list of inlines), target
+    | Note [Block]          -- ^ Footnote or endnote
+    | Span Attr [Inline]    -- ^ Generic inline container with attributes
+    deriving (Show, Eq, Ord, Read, Typeable, Data, Generic)
+
+data Citation = Citation { citationId      :: String
+                         , citationPrefix  :: [Inline]
+                         , citationSuffix  :: [Inline]
+                         , citationMode    :: CitationMode
+                         , citationNoteNum :: Int
+                         , citationHash    :: Int
+                         }
+
+data CitationMode = AuthorInText | SuppressAuthor | NormalCitation
+                    
+-}
+

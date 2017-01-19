@@ -52,7 +52,8 @@ Library
                      ghc-prim >= 0.2,
                      bytestring >= 0.9 && < 0.11,
                      aeson >= 0.6.2 && < 1.2,
-                     QuickCheck >= 2
+                     QuickCheck >= 2,
+                     lens
   if impl(ghc < 7.10)
     Build-depends:   deepseq-generics >= 0.1 && < 0.2
   else

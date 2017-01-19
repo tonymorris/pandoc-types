@@ -269,17 +269,17 @@ data Inline
     | Span Attr [Inline]    -- ^ Generic inline container with attributes
     deriving (Show, Eq, Ord, Read, Typeable, Data, Generic)
 
-data Citation = Citation { citationId      :: String
-                         , citationPrefix  :: [Inline]
-                         , citationSuffix  :: [Inline]
-                         , citationMode    :: CitationMode
-                         , citationNoteNum :: Int
-                         , citationHash    :: Int
+data Citation = Citation { _citationId      :: String
+                         , _citationPrefix  :: [Inline]
+                         , _citationSuffix  :: [Inline]
+                         , _citationMode    :: CitationMode
+                         , _citationNoteNum :: Int
+                         , _citationHash    :: Int
                          }
                 deriving (Show, Eq, Read, Typeable, Data, Generic)
 
 instance Ord Citation where
-    compare = comparing citationHash
+    compare = comparing _citationHash
 
 data CitationMode = AuthorInText | SuppressAuthor | NormalCitation
                     deriving (Show, Eq, Ord, Read, Typeable, Data, Generic)
@@ -344,22 +344,22 @@ instance FromJSON Citation where
     citationMode'    <- v .: "citationMode"
     citationNoteNum' <- v .: "citationNoteNum"
     citationHash'    <- v .: "citationHash"
-    return Citation { citationId = citationId'
-                    , citationPrefix = citationPrefix'
-                    , citationSuffix = citationSuffix'
-                    , citationMode = citationMode'
-                    , citationNoteNum = citationNoteNum'
-                    , citationHash = citationHash'
+    return Citation { _citationId = citationId'
+                    , _citationPrefix = citationPrefix'
+                    , _citationSuffix = citationSuffix'
+                    , _citationMode = citationMode'
+                    , _citationNoteNum = citationNoteNum'
+                    , _citationHash = citationHash'
                     }
   parseJSON _ = mempty
 instance ToJSON Citation where
   toJSON cit =
-    object [ "citationId"      .= citationId cit
-           , "citationPrefix"  .= citationPrefix cit
-           , "citationSuffix"  .= citationSuffix cit
-           , "citationMode"    .= citationMode cit
-           , "citationNoteNum" .= citationNoteNum cit
-           , "citationHash"    .= citationHash cit
+    object [ "citationId"      .= _citationId cit
+           , "citationPrefix"  .= _citationPrefix cit
+           , "citationSuffix"  .= _citationSuffix cit
+           , "citationMode"    .= _citationMode cit
+           , "citationNoteNum" .= _citationNoteNum cit
+           , "citationHash"    .= _citationHash cit
            ]
 
 instance FromJSON QuoteType where
@@ -618,7 +618,7 @@ instance Wrapped Meta where
       (\(Meta x) -> x)
       Meta
 
-instance Meta ~ t0 => Rewrapped Meta t0
+instance Meta ~ t => Rewrapped Meta t
 
 class HasMeta a where
   meta ::
@@ -800,33 +800,663 @@ instance HasBlocks MetaValue where
   blocks =
     _MetaBlocks . traverse
 
-{-
+class AsAlignLeft a where
+  _AlignLeft ::
+    Prism'
+      a
+      ()
 
-data Alignment = AlignLeft
-               | AlignRight
-               | AlignCenter
-               | AlignDefault
+instance AsAlignLeft () where
+  _AlignLeft =
+    id
 
-type ListAttributes = (Int, ListNumberStyle, ListNumberDelim)
+instance AsAlignLeft Alignment where
+  _AlignLeft =
+    prism'
+      (\() -> AlignLeft)
+      (\a -> case a of
+                AlignLeft ->
+                  Just ()
+                _ -> 
+                  Nothing)
 
-data ListNumberStyle = DefaultStyle
-                     | Example
-                     | Decimal
-                     | LowerRoman
-                     | UpperRoman
-                     | LowerAlpha
-                     | UpperAlpha
+class AsAlignRight a where
+  _AlignRight ::
+    Prism'
+      a
+      ()
 
-data ListNumberDelim = DefaultDelim
-                     | Period
-                     | OneParen
-                     | TwoParens
+instance AsAlignRight () where
+  _AlignRight =
+    id
 
-type Attr = (String, [String], [(String, String)])
+instance AsAlignRight Alignment where
+  _AlignRight =
+    prism'
+      (\() -> AlignRight)
+      (\a -> case a of
+                AlignRight ->
+                  Just ()
+                _ -> 
+                  Nothing)
 
-type TableCell = [Block]
+class AsAlignCenter a where
+  _AlignCenter ::
+    Prism'
+      a
+      ()
 
-newtype Format = Format String
+instance AsAlignCenter () where
+  _AlignCenter =
+    id
+
+instance AsAlignCenter Alignment where
+  _AlignCenter =
+    prism'
+      (\() -> AlignCenter)
+      (\a -> case a of
+                AlignCenter ->
+                  Just ()
+                _ -> 
+                  Nothing)
+
+class AsAlignDefault a where
+  _AlignDefault ::
+    Prism'
+      a
+      ()
+
+instance AsAlignDefault () where
+  _AlignDefault =
+    id
+
+instance AsAlignDefault Alignment where
+  _AlignDefault =
+    prism'
+      (\() -> AlignDefault)
+      (\a -> case a of
+                AlignDefault ->
+                  Just ()
+                _ -> 
+                  Nothing)
+
+class HasListStartNumber a where
+  listStartNumber ::
+    Lens'
+      a
+      Int
+
+instance HasListStartNumber Int where
+  listStartNumber =
+    id
+
+instance HasListStartNumber ListAttributes where
+  listStartNumber =
+    _1
+
+class HasListNumberStyle a where
+  listNumberStyle ::
+    Lens'
+      a
+      ListNumberStyle
+
+instance HasListNumberStyle ListNumberStyle where
+  listNumberStyle =
+    id
+
+instance HasListNumberStyle ListAttributes where
+  listNumberStyle =
+    _2
+
+class HasListNumberDelim a where
+  listNumberDelim ::
+    Lens'
+      a
+      ListNumberDelim
+
+instance HasListNumberDelim ListNumberDelim where
+  listNumberDelim =
+    id
+
+instance HasListNumberDelim ListAttributes where
+  listNumberDelim =
+    _3
+
+class AsDefaultStyle a where
+  _DefaultStyle ::
+    Prism'
+      a
+      ()
+
+instance AsDefaultStyle () where
+  _DefaultStyle =
+    id
+
+instance AsDefaultStyle ListNumberStyle where
+  _DefaultStyle =
+    prism'
+      (\() -> DefaultStyle)
+      (\a -> case a of
+                DefaultStyle ->
+                  Just ()
+                _ -> 
+                  Nothing)
+
+class AsExample a where
+  _Example ::
+    Prism'
+      a
+      ()
+
+instance AsExample () where
+  _Example =
+    id
+
+instance AsExample ListNumberStyle where
+  _Example =
+    prism'
+      (\() -> Example)
+      (\a -> case a of
+                Example ->
+                  Just ()
+                _ -> 
+                  Nothing)
+
+class AsDecimal a where
+  _Decimal ::
+    Prism'
+      a
+      ()
+
+instance AsDecimal () where
+  _Decimal =
+    id
+
+instance AsDecimal ListNumberStyle where
+  _Decimal =
+    prism'
+      (\() -> Decimal)
+      (\a -> case a of
+                Decimal ->
+                  Just ()
+                _ -> 
+                  Nothing)
+
+class AsLowerRoman a where
+  _LowerRoman ::
+    Prism'
+      a
+      ()
+
+instance AsLowerRoman () where
+  _LowerRoman =
+    id
+
+instance AsLowerRoman ListNumberStyle where
+  _LowerRoman =
+    prism'
+      (\() -> LowerRoman)
+      (\a -> case a of
+                LowerRoman ->
+                  Just ()
+                _ -> 
+                  Nothing)
+
+class AsUpperRoman a where
+  _UpperRoman ::
+    Prism'
+      a
+      ()
+
+instance AsUpperRoman () where
+  _UpperRoman =
+    id
+
+instance AsUpperRoman ListNumberStyle where
+  _UpperRoman =
+    prism'
+      (\() -> UpperRoman)
+      (\a -> case a of
+                UpperRoman ->
+                  Just ()
+                _ -> 
+                  Nothing)
+
+class AsLowerAlpha a where
+  _LowerAlpha ::
+    Prism'
+      a
+      ()
+
+instance AsLowerAlpha () where
+  _LowerAlpha =
+    id
+
+instance AsLowerAlpha ListNumberStyle where
+  _LowerAlpha =
+    prism'
+      (\() -> LowerAlpha)
+      (\a -> case a of
+                LowerAlpha ->
+                  Just ()
+                _ -> 
+                  Nothing)
+
+class AsUpperAlpha a where
+  _UpperAlpha ::
+    Prism'
+      a
+      ()
+
+instance AsUpperAlpha () where
+  _UpperAlpha =
+    id
+
+instance AsUpperAlpha ListNumberStyle where
+  _UpperAlpha =
+    prism'
+      (\() -> UpperAlpha)
+      (\a -> case a of
+                UpperAlpha ->
+                  Just ()
+                _ -> 
+                  Nothing)
+
+class AsDefaultDelim a where
+  _DefaultDelim ::
+    Prism'
+      a
+      ()
+
+instance AsDefaultDelim () where
+  _DefaultDelim =
+    id
+
+instance AsDefaultDelim ListNumberDelim where
+  _DefaultDelim =
+    prism'
+      (\() -> DefaultDelim)
+      (\a -> case a of
+                DefaultDelim ->
+                  Just ()
+                _ -> 
+                  Nothing)
+
+class AsPeriod a where
+  _Period ::
+    Prism'
+      a
+      ()
+
+instance AsPeriod () where
+  _Period =
+    id
+
+instance AsPeriod ListNumberDelim where
+  _Period =
+    prism'
+      (\() -> Period)
+      (\a -> case a of
+                Period ->
+                  Just ()
+                _ -> 
+                  Nothing)
+
+class AsOneParen a where
+  _OneParen ::
+    Prism'
+      a
+      ()
+
+instance AsOneParen () where
+  _OneParen =
+    id
+
+instance AsOneParen ListNumberDelim where
+  _OneParen =
+    prism'
+      (\() -> OneParen)
+      (\a -> case a of
+                OneParen ->
+                  Just ()
+                _ -> 
+                  Nothing)
+
+class AsTwoParens a where
+  _TwoParens ::
+    Prism'
+      a
+      ()
+
+instance AsTwoParens () where
+  _TwoParens =
+    id
+
+instance AsTwoParens ListNumberDelim where
+  _TwoParens =
+    prism'
+      (\() -> TwoParens)
+      (\a -> case a of
+                TwoParens ->
+                  Just ()
+                _ -> 
+                  Nothing)
+
+class AttrIdentifier a where
+  attrIdentifier ::
+    Lens'
+      a
+      String
+
+instance AttrIdentifier String where
+  attrIdentifier =
+    id
+
+instance AttrIdentifier Attr where
+  attrIdentifier =
+    _1
+
+class AttrClasses a where
+  attrClasses ::
+    Lens'
+      a
+      [String]
+
+instance AttrClasses [String] where
+  attrClasses =
+    id
+
+instance AttrClasses Attr where
+  attrClasses =
+    _2
+
+class AttrKeyValuePairs a where
+  attrKeyValuePairs ::
+    Lens'
+      a
+      [(String, String)]
+
+instance AttrKeyValuePairs [(String, String)] where
+  attrKeyValuePairs =
+    id
+
+instance AttrKeyValuePairs Attr where
+  attrKeyValuePairs =
+    _3
+
+instance Wrapped Format where
+  type Unwrapped Format = String
+  _Wrapped' =
+    iso
+      (\(Format x) -> x)
+      Format
+
+instance Format ~ t => Rewrapped Format t0
+
+class HasQuoteType a where
+  quoteType ::
+    Lens'
+      a
+      QuoteType
+
+instance HasQuoteType QuoteType where
+  quoteType = 
+    id
+
+class AsSingleQuote a where
+  _SingleQuote ::
+    Prism'
+      a
+      ()
+
+instance AsSingleQuote () where
+  _SingleQuote =
+    id
+
+instance AsSingleQuote QuoteType where
+  _SingleQuote =
+    prism'
+      (\() -> SingleQuote)
+      (\a -> case a of
+                SingleQuote ->
+                  Just ()
+                _ -> 
+                  Nothing)
+
+class AsDoubleQuote a where
+  _DoubleQuote ::
+    Prism'
+      a
+      ()
+
+instance AsDoubleQuote () where
+  _DoubleQuote =
+    id
+
+instance AsDoubleQuote QuoteType where
+  _DoubleQuote =
+    prism'
+      (\() -> DoubleQuote)
+      (\a -> case a of
+                DoubleQuote ->
+                  Just ()
+                _ -> 
+                  Nothing)
+
+class HasTargetURL a where
+  targetURL ::
+    Lens'
+      a
+      String
+
+instance HasTargetURL String where
+  targetURL =
+    id
+
+instance HasTargetURL Target where
+  targetURL =
+    _1
+
+class HasTargetTitle a where
+  targetTitle ::
+    Lens'
+      a
+      String
+
+instance HasTargetTitle String where
+  targetTitle =
+    id
+
+instance HasTargetTitle Target where
+  targetTitle =
+    _2
+
+class HasMathType a where
+  mathType ::
+    Lens'
+      a
+      MathType
+
+instance HasMathType MathType where
+  mathType =
+    id
+
+class AsDisplayMath a where
+  _DisplayMath ::
+    Prism'
+      a
+      ()
+
+instance AsDisplayMath () where
+  _DisplayMath =
+    id
+
+instance AsDisplayMath MathType where
+  _DisplayMath =
+    prism'
+      (\() -> DisplayMath)
+      (\a -> case a of
+                DisplayMath ->
+                  Just ()
+                _ -> 
+                  Nothing)
+
+class AsInlineMath a where
+  _InlineMath ::
+    Prism'
+      a
+      ()
+
+instance AsInlineMath () where
+  _InlineMath =
+    id
+
+instance AsInlineMath MathType where
+  _InlineMath =
+    prism'
+      (\() -> InlineMath)
+      (\a -> case a of
+                InlineMath ->
+                  Just ()
+                _ -> 
+                  Nothing)
+
+class HasCitationMode a where
+  citationMode ::
+    Lens'
+      a
+      CitationMode
+
+instance HasCitationMode CitationMode where
+  citationMode =
+    id
+
+class AsAuthorInText a where
+  _AuthorInText ::
+    Prism'
+      a
+      ()
+
+instance AsAuthorInText () where
+  _AuthorInText =
+    id
+
+instance AsAuthorInText CitationMode where
+  _AuthorInText =
+    prism'
+      (\() -> AuthorInText)
+      (\a -> case a of
+                AuthorInText ->
+                  Just ()
+                _ -> 
+                  Nothing)
+
+class AsSuppressAuthor a where
+  _SuppressAuthor ::
+    Prism'
+      a
+      ()
+
+instance AsSuppressAuthor () where
+  _SuppressAuthor =
+    id
+
+instance AsSuppressAuthor CitationMode where
+  _SuppressAuthor =
+    prism'
+      (\() -> SuppressAuthor)
+      (\a -> case a of
+                SuppressAuthor ->
+                  Just ()
+                _ -> 
+                  Nothing)
+
+class AsNormalCitation a where
+  _NormalCitation ::
+    Prism'
+      a
+      ()
+
+instance AsNormalCitation () where
+  _NormalCitation =
+    id
+
+instance AsNormalCitation CitationMode where
+  _NormalCitation =
+    prism'
+      (\() -> NormalCitation)
+      (\a -> case a of
+                NormalCitation ->
+                  Just ()
+                _ -> 
+                  Nothing)
+
+class HasCitation a where
+  citation ::
+    Lens'
+      a
+      Citation
+
+instance HasCitation Citation where
+  citation =
+    id
+
+class HasCitationId a where
+  citationId ::
+    Lens'
+      a
+      String
+
+instance HasCitationId String where
+  citationId =
+    id
+
+instance HasCitationId Citation where
+  citationId =
+    lens
+      (\(Citation i _ _ _ _ _) -> i)
+      (\(Citation _ p s m n h) i -> Citation i p s m n h)
+
+class HasCitationPrefix a where
+  citationPrefix ::
+    Lens'
+      a
+      [Inline]
+
+instance HasCitationPrefix [Inline] where
+  citationPrefix =
+    id
+
+instance HasCitationPrefix Citation where
+  citationPrefix =
+    lens
+      (\(Citation _ p _ _ _ _) -> p)
+      (\(Citation i _ s m n h) p -> Citation i p s m n h)
+
+class HasCitationSuffix a where
+  citationSuffix ::
+    Lens'
+      a
+      [Inline]
+
+instance HasCitationSuffix [Inline] where
+  citationSuffix =
+    id
+
+instance HasCitationSuffix Citation where
+  citationSuffix =
+    lens
+      (\(Citation _ _ s _ _ _) -> s)
+      (\(Citation i p _ m n h) s -> Citation i p s m n h)
+
+instance HasCitationMode Citation where
+  citationMode =
+    lens
+      (\(Citation _ _ _ m _ _) -> m)
+      (\(Citation i p s _ n h) m -> Citation i p s m n h)
+
+
+{-}
 
 data Block
     = Plain [Inline]        -- ^ Plain text, not a paragraph
@@ -853,12 +1483,6 @@ data Block
     | Div Attr [Block]      -- ^ Generic block container with attributes
     | Null                  -- ^ Nothing
 
-data QuoteType = SingleQuote | DoubleQuote
-
-type Target = (String, String)
-
-data MathType = DisplayMath | InlineMath
-
 data Inline
     = Str String            -- ^ Text (string)
     | Emph [Inline]         -- ^ Emphasized text (list of inlines)
@@ -881,16 +1505,6 @@ data Inline
     | Note [Block]          -- ^ Footnote or endnote
     | Span Attr [Inline]    -- ^ Generic inline container with attributes
     deriving (Show, Eq, Ord, Read, Typeable, Data, Generic)
-
-data Citation = Citation { citationId      :: String
-                         , citationPrefix  :: [Inline]
-                         , citationSuffix  :: [Inline]
-                         , citationMode    :: CitationMode
-                         , citationNoteNum :: Int
-                         , citationHash    :: Int
-                         }
-
-data CitationMode = AuthorInText | SuppressAuthor | NormalCitation
-                    
+     
 -}
 

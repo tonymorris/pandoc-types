@@ -1455,56 +1455,624 @@ instance HasCitationMode Citation where
       (\(Citation _ _ _ m _ _) -> m)
       (\(Citation i p s _ n h) m -> Citation i p s m n h)
 
+class HasBlock a where
+  block ::
+    Lens'
+      a
+      Block
 
-{-}
+instance HasBlock Block where
+  block =
+    id
 
-data Block
-    = Plain [Inline]        -- ^ Plain text, not a paragraph
-    | Para [Inline]         -- ^ Paragraph
-    | LineBlock [[Inline]]  -- ^ Multiple non-breaking lines
-    | CodeBlock Attr String -- ^ Code block (literal) with attributes
-    | RawBlock Format String -- ^ Raw block
-    | BlockQuote [Block]    -- ^ Block quote (list of blocks)
-    | OrderedList ListAttributes [[Block]] -- ^ Ordered list (attributes
-                            -- and a list of items, each a list of blocks)
-    | BulletList [[Block]]  -- ^ Bullet list (list of items, each
-                            -- a list of blocks)
-    | DefinitionList [([Inline],[[Block]])]  -- ^ Definition list
-                            -- Each list item is a pair consisting of a
-                            -- term (a list of inlines) and one or more
-                            -- definitions (each a list of blocks)
-    | Header Int Attr [Inline] -- ^ Header - level (integer) and text (inlines)
-    | HorizontalRule        -- ^ Horizontal rule
-    | Table [Inline] [Alignment] [Double] [TableCell] [[TableCell]]  -- ^ Table,
-                            -- with caption, column alignments (required),
-                            -- relative column widths (0 = default),
-                            -- column headers (each a list of blocks), and
-                            -- rows (each a list of lists of blocks)
-    | Div Attr [Block]      -- ^ Generic block container with attributes
-    | Null                  -- ^ Nothing
+class AsPlain a where
+  _Plain ::
+    Prism'
+      a
+      [Inline]
 
-data Inline
-    = Str String            -- ^ Text (string)
-    | Emph [Inline]         -- ^ Emphasized text (list of inlines)
-    | Strong [Inline]       -- ^ Strongly emphasized text (list of inlines)
-    | Strikeout [Inline]    -- ^ Strikeout text (list of inlines)
-    | Superscript [Inline]  -- ^ Superscripted text (list of inlines)
-    | Subscript [Inline]    -- ^ Subscripted text (list of inlines)
-    | SmallCaps [Inline]    -- ^ Small caps text (list of inlines)
-    | Quoted QuoteType [Inline] -- ^ Quoted text (list of inlines)
-    | Cite [Citation]  [Inline] -- ^ Citation (list of inlines)
-    | Code Attr String      -- ^ Inline code (literal)
-    | Space                 -- ^ Inter-word space
-    | SoftBreak             -- ^ Soft line break
-    | LineBreak             -- ^ Hard line break
-    | PageBreak             -- ^ Force new page
-    | Math MathType String  -- ^ TeX math (literal)
-    | RawInline Format String -- ^ Raw inline
-    | Link Attr [Inline] Target  -- ^ Hyperlink: alt text (list of inlines), target
-    | Image Attr [Inline] Target -- ^ Image:  alt text (list of inlines), target
-    | Note [Block]          -- ^ Footnote or endnote
-    | Span Attr [Inline]    -- ^ Generic inline container with attributes
-    deriving (Show, Eq, Ord, Read, Typeable, Data, Generic)
-     
--}
+instance AsPlain [Inline] where
+  _Plain =
+    id
 
+instance AsPlain Block where
+  _Plain =
+    prism'
+      Plain
+      (\b -> case b of
+                Plain x -> Just x
+                _ -> Nothing)
+
+class AsPara a where
+  _Para ::
+    Prism'
+      a
+      [Inline]
+
+instance AsPara [Inline] where
+  _Para =
+    id
+    
+instance AsPara Block where
+  _Para =
+    prism'
+      Para
+      (\b -> case b of
+                Para x -> Just x
+                _ -> Nothing)
+
+class AsLineBlock a where
+  _LineBlock ::
+    Prism'
+      a
+      [[Inline]]
+
+instance AsLineBlock [[Inline]] where
+  _LineBlock =
+    id
+    
+instance AsLineBlock Block where
+  _LineBlock =
+    prism'
+      LineBlock
+      (\b -> case b of
+                LineBlock x -> Just x
+                _ -> Nothing)
+
+class AsCodeBlock a where
+  _CodeBlock ::
+    Prism'
+      a
+      (Attr, String)
+
+instance AsCodeBlock (Attr, String) where
+  _CodeBlock =
+    id
+    
+instance AsCodeBlock Block where
+  _CodeBlock =
+    prism'
+      (uncurry CodeBlock)
+      (\b -> case b of
+                CodeBlock x y -> Just (x, y)
+                _ -> Nothing)
+
+class AsRawBlock a where
+  _RawBlock ::
+    Prism'
+      a
+      (Format, String)
+
+instance AsRawBlock (Format, String) where
+  _RawBlock =
+    id
+    
+instance AsRawBlock Block where
+  _RawBlock =
+    prism'
+      (uncurry RawBlock)
+      (\b -> case b of
+                RawBlock x y -> Just (x, y)
+                _ -> Nothing)
+
+class AsBlockQuote a where
+  _BlockQuote ::
+    Prism'
+      a
+      [Block]
+
+instance AsBlockQuote [Block] where
+  _BlockQuote =
+    id
+    
+instance AsBlockQuote Block where
+  _BlockQuote =
+    prism'
+      BlockQuote
+      (\b -> case b of
+                BlockQuote x -> Just x
+                _ -> Nothing)
+
+class AsOrderedList a where
+  _OrderedList ::
+    Prism'
+      a
+      (ListAttributes, [[Block]])
+
+instance AsOrderedList (ListAttributes, [[Block]]) where
+  _OrderedList =
+    id
+    
+instance AsOrderedList Block where
+  _OrderedList =
+    prism'
+      (uncurry OrderedList)
+      (\b -> case b of
+                OrderedList x y -> Just (x, y)
+                _ -> Nothing)
+
+class AsBulletList a where
+  _BulletList ::
+    Prism'
+      a
+      [[Block]]
+
+instance AsBulletList [[Block]] where
+  _BulletList =
+    id
+    
+instance AsBulletList Block where
+  _BulletList =
+    prism'
+      BulletList
+      (\b -> case b of
+                BulletList x -> Just x
+                _ -> Nothing)
+
+class AsDefinitionList a where
+  _DefinitionList ::
+    Prism'
+      a
+      [([Inline],[[Block]])]
+
+instance AsDefinitionList [([Inline],[[Block]])] where
+  _DefinitionList =
+    id
+    
+instance AsDefinitionList Block where
+  _DefinitionList =
+    prism'
+      DefinitionList
+      (\b -> case b of
+                DefinitionList x -> Just x
+                _ -> Nothing)
+
+class AsHeader a where
+  _Header ::
+    Prism'
+      a
+      (Int, Attr, [Inline])
+
+instance AsHeader (Int, Attr, [Inline]) where
+  _Header =
+    id
+    
+instance AsHeader Block where
+  _Header =
+    prism'
+      (\(x, y, z) -> Header x y z)
+      (\b -> case b of
+                Header x y z -> Just (x, y, z)
+                _ -> Nothing)
+
+class AsHorizontalRule a where
+  _HorizontalRule ::
+    Prism'
+      a
+      ()
+
+instance AsHorizontalRule () where
+  _HorizontalRule =
+    id
+    
+instance AsHorizontalRule Block where
+  _HorizontalRule =
+    prism'
+      (\() -> HorizontalRule)
+      (\b -> case b of
+                HorizontalRule -> Just ()
+                _ -> Nothing)
+
+class AsTable a where
+  _Table ::
+    Prism'
+      a
+      ([Inline], [Alignment], [Double], [TableCell], [[TableCell]])
+
+instance AsTable ([Inline], [Alignment], [Double], [TableCell], [[TableCell]]) where
+  _Table =
+    id
+    
+instance AsTable Block where
+  _Table =
+    prism'
+      (\(x, y, z, v, w) -> Table x y z v w)
+      (\b -> case b of
+                Table x y z v w -> Just (x, y, z, v, w)
+                _ -> Nothing)
+
+class AsDiv a where
+  _Div ::
+    Prism'
+      a
+      (Attr, [Block])
+
+instance AsDiv (Attr, [Block]) where
+  _Div =
+    id
+    
+instance AsDiv Block where
+  _Div =
+    prism'
+      (\(x, y) -> Div x y)
+      (\b -> case b of
+                Div x y -> Just (x, y)
+                _ -> Nothing)
+
+class AsNull a where
+  _Null ::
+    Prism'
+      a
+      ()
+
+instance AsNull () where
+  _Null =
+    id
+
+instance AsNull Block where
+  _Null =
+    prism'
+      (\() -> Null)
+      (\b -> case b of
+                Null -> Just ()
+                _ -> Nothing)
+
+class AsStr a where
+  _Str ::
+    Prism'
+      a
+      String
+
+instance AsStr String where
+  _Str =
+    id
+
+instance AsStr Inline where
+  _Str =
+    prism'
+      Str
+      (\b -> case b of
+               Str x -> Just x
+               _ -> Nothing)
+
+class AsEmph a where
+  _Emph ::
+    Prism'
+      a
+      [Inline]
+
+instance AsEmph [Inline] where
+  _Emph =
+    id
+
+instance AsEmph Inline where
+  _Emph =
+    prism'
+      Emph
+      (\b -> case b of
+               Emph x -> Just x
+               _ -> Nothing)
+
+class AsStrong a where
+  _Strong ::
+    Prism'
+      a
+      [Inline]
+
+instance AsStrong [Inline] where
+  _Strong =
+    id
+
+instance AsStrong Inline where
+  _Strong =
+    prism'
+      Strong
+      (\b -> case b of
+               Strong x -> Just x
+               _ -> Nothing)
+
+class AsStrikeout a where
+  _Strikeout ::
+    Prism'
+      a
+      [Inline]
+
+instance AsStrikeout [Inline] where
+  _Strikeout =
+    id
+
+instance AsStrikeout Inline where
+  _Strikeout =
+    prism'
+      Strikeout
+      (\b -> case b of
+               Strikeout x -> Just x
+               _ -> Nothing)
+
+class AsSuperscript a where
+  _Superscript ::
+    Prism'
+      a
+      [Inline]
+
+instance AsSuperscript [Inline] where
+  _Superscript =
+    id
+
+instance AsSuperscript Inline where
+  _Superscript =
+    prism'
+      Superscript
+      (\b -> case b of
+               Superscript x -> Just x
+               _ -> Nothing)
+
+class AsSubscript a where
+  _Subscript ::
+    Prism'
+      a
+      [Inline]
+
+instance AsSubscript [Inline] where
+  _Subscript =
+    id
+
+instance AsSubscript Inline where
+  _Subscript =
+    prism'
+      Subscript
+      (\b -> case b of
+               Subscript x -> Just x
+               _ -> Nothing)
+
+class AsSmallCaps a where
+  _SmallCaps ::
+    Prism'
+      a
+      [Inline]
+
+instance AsSmallCaps [Inline] where
+  _SmallCaps =
+    id
+
+instance AsSmallCaps Inline where
+  _SmallCaps =
+    prism'
+      SmallCaps
+      (\b -> case b of
+               SmallCaps x -> Just x
+               _ -> Nothing)
+
+class AsQuoted a where
+  _Quoted ::
+    Prism'
+      a
+      (QuoteType, [Inline])
+
+instance AsQuoted (QuoteType, [Inline]) where
+  _Quoted =
+    id
+
+instance AsQuoted Inline where
+  _Quoted =
+    prism'
+      (uncurry Quoted)
+      (\b -> case b of
+                Quoted x y -> Just (x, y)
+                _ -> Nothing)
+
+class AsCite a where
+  _Cite ::
+    Prism'
+      a
+      ([Citation], [Inline])
+
+instance AsCite ([Citation], [Inline]) where
+  _Cite =
+    id
+
+instance AsCite Inline where
+  _Cite =
+    prism'
+      (uncurry Cite)
+      (\b -> case b of
+                Cite x y -> Just (x, y)
+                _ -> Nothing)
+
+class AsCode a where
+  _Code ::
+    Prism'
+      a
+      (Attr, String)
+
+instance AsCode (Attr, String) where
+  _Code =
+    id
+
+instance AsCode Inline where
+  _Code =
+    prism'
+      (uncurry Code)
+      (\b -> case b of
+                Code x y -> Just (x, y)
+                _ -> Nothing)
+
+class AsSpace a where
+  _Space ::
+    Prism'
+      a
+      ()
+
+instance AsSpace () where
+  _Space =
+    id
+
+instance AsSpace Inline where
+  _Space =
+    prism'
+      (\() -> Space)
+      (\b -> case b of
+                Space -> Just ()
+                _ -> Nothing)
+
+class AsSoftBreak a where
+  _SoftBreak ::
+    Prism'
+      a
+      ()
+
+instance AsSoftBreak () where
+  _SoftBreak =
+    id
+
+instance AsSoftBreak Inline where
+  _SoftBreak =
+    prism'
+      (\() -> SoftBreak)
+      (\b -> case b of
+                SoftBreak -> Just ()
+                _ -> Nothing)
+
+class AsLineBreak a where
+  _LineBreak ::
+    Prism'
+      a
+      ()
+
+instance AsLineBreak () where
+  _LineBreak =
+    id
+
+instance AsLineBreak Inline where
+  _LineBreak =
+    prism'
+      (\() -> LineBreak)
+      (\b -> case b of
+                LineBreak -> Just ()
+                _ -> Nothing)
+
+class AsPageBreak a where
+  _PageBreak ::
+    Prism'
+      a
+      ()
+
+instance AsPageBreak () where
+  _PageBreak =
+    id
+
+instance AsPageBreak Inline where
+  _PageBreak =
+    prism'
+      (\() -> PageBreak)
+      (\b -> case b of
+                PageBreak -> Just ()
+                _ -> Nothing)
+
+class AsMath a where
+  _Math ::
+    Prism'
+      a
+      (MathType, String)
+
+instance AsMath (MathType, String) where
+  _Math =
+    id
+
+instance AsMath Inline where
+  _Math =
+    prism'
+      (uncurry Math)
+      (\b -> case b of
+                Math x y -> Just (x, y)
+                _ -> Nothing)
+
+class AsRawInline a where
+  _RawInline ::
+    Prism'
+      a
+      (Format, String)
+
+instance AsRawInline (Format, String) where
+  _RawInline =
+    id
+
+instance AsRawInline Inline where
+  _RawInline =
+    prism'
+      (uncurry RawInline)
+      (\b -> case b of
+                RawInline x y -> Just (x, y)
+                _ -> Nothing)
+
+class AsLink a where
+  _Link ::
+    Prism'
+      a
+      (Attr, [Inline], Target)
+
+instance AsLink (Attr, [Inline], Target) where
+  _Link =
+    id
+
+instance AsLink Inline where
+  _Link =
+    prism'
+      (\(x, y, z) -> Link x y z)
+      (\b -> case b of
+                Link x y z -> Just (x, y, z)
+                _ -> Nothing)
+
+class AsImage a where
+  _Image ::
+    Prism'
+      a
+      (Attr, [Inline], Target)
+
+instance AsImage (Attr, [Inline], Target) where
+  _Image =
+    id
+
+instance AsImage Inline where
+  _Image =
+    prism'
+      (\(x, y, z) -> Image x y z)
+      (\b -> case b of
+                Image x y z -> Just (x, y, z)
+                _ -> Nothing)
+
+class AsNote a where
+  _Note ::
+    Prism'
+      a
+      [Block]
+
+instance AsNote [Block] where
+  _Note =
+    id
+
+instance AsNote Inline where
+  _Note =
+    prism'
+      Note
+      (\b -> case b of
+               Note x -> Just x
+               _ -> Nothing)
+
+class AsSpan a where
+  _Span ::
+    Prism'
+      a
+      (Attr, [Inline])
+
+instance AsSpan (Attr, [Inline]) where
+  _Span =
+    id
+
+instance AsSpan Inline where
+  _Span =
+    prism'
+      (uncurry Span)
+      (\b -> case b of
+                Span x y -> Just (x, y)
+                _ -> Nothing)

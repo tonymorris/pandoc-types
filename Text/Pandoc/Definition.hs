@@ -46,7 +46,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 Definition of 'Pandoc' data structure for format-neutral representation
 of documents.
 -}
-module Text.Pandoc.Definition ( Pandoc(..)
+module Text.Pandoc.Definition {- ( Pandoc(..)
                               , Meta(..)
                               , MetaValue(..)
                               , nullMeta
@@ -71,7 +71,7 @@ module Text.Pandoc.Definition ( Pandoc(..)
                               , Citation(..)
                               , CitationMode(..)
                               , pandocTypesVersion
-                              ) where
+                              ) -} where
 
 import Control.Lens hiding ((.=))
 import Data.Generics (Data, Typeable)
@@ -610,6 +610,34 @@ instance NFData Pandoc where rnf = genericRnf
 
 pandocTypesVersion :: Version
 pandocTypesVersion = version
+
+----
+
+class HasPandoc a where
+  pandocL ::
+    Lens'
+      a
+      Pandoc
+
+instance HasPandoc Pandoc where
+  pandocL =
+    id
+    
+class AsPandoc a where
+  _Pandoc ::
+    Prism'
+      a
+      Pandoc
+
+instance AsPandoc Pandoc where
+  _Pandoc =
+    id
+
+instance AsPandoc (Meta, [Block]) where
+  _Pandoc =
+    iso
+      (uncurry Pandoc)
+      (\(Pandoc m b) -> (m, b))
 
 instance Wrapped Meta where
   type Unwrapped Meta = M.Map String MetaValue

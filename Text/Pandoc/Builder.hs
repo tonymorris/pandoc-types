@@ -113,7 +113,8 @@ module Text.Pandoc.Builder ( module Text.Pandoc.Definition
                            -- * Document builders
                            , doc
                            , ToMetaValue(..)
-                           , HasMeta(..)
+                           , setMeta
+                           , deleteMeta
                            , setTitle
                            , setAuthors
                            , setDate
@@ -177,6 +178,7 @@ import qualified Data.Foldable as F
 import Data.List (groupBy)
 import Data.Data
 import Control.Arrow ((***))
+import Control.Lens(over)
 import GHC.Generics (Generic)
 
 #if MIN_VERSION_base(4,5,0)
@@ -287,19 +289,12 @@ instance ToMetaValue a => ToMetaValue [a] where
 instance ToMetaValue a => ToMetaValue (M.Map String a) where
   toMetaValue = MetaMap . M.map toMetaValue
 
-class HasMeta a where
-  setMeta :: ToMetaValue b => String -> b -> a -> a
-  deleteMeta :: String -> a -> a
+setMeta :: (HasMeta a, ToMetaValue b) => String -> b -> a -> a
+setMeta key val = over meta (\(Meta ms) -> Meta $ M.insert key (toMetaValue val) ms)
 
-instance HasMeta Meta where
-  setMeta key val (Meta ms) = Meta $ M.insert key (toMetaValue val) ms
-  deleteMeta key (Meta ms) = Meta $ M.delete key ms
-
-instance HasMeta Pandoc where
-  setMeta key val (Pandoc (Meta ms) bs) =
-    Pandoc (Meta $ M.insert key (toMetaValue val) ms) bs
-  deleteMeta key (Pandoc (Meta ms) bs) =
-    Pandoc (Meta $ M.delete key ms) bs
+deleteMeta :: HasMeta a => String -> a -> a
+deleteMeta key =
+  over meta (\(Meta ms) -> Meta $ M.delete key ms)
 
 setTitle :: Inlines -> Pandoc -> Pandoc
 setTitle = setMeta "title"

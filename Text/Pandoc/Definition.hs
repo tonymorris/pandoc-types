@@ -633,12 +633,6 @@ instance AsPandoc Pandoc where
   _Pandoc =
     id
 
-instance AsPandoc (Meta, [Block]) where
-  _Pandoc =
-    iso
-      (uncurry Pandoc)
-      (\(Pandoc m b) -> (m, b))
-
 instance Wrapped Meta where
   type Unwrapped Meta = M.Map String MetaValue
   _Wrapped' =
@@ -698,17 +692,17 @@ instance HasBlockList Pandoc where
       (\(Pandoc _ b) -> b)
       (\(Pandoc m _) b -> Pandoc m b)
 
-class HasBlocks a where
+class AllBlocks a where
   blocks ::
     Traversal'
       a
       Block
 
-instance HasBlocks Block where
+instance AllBlocks Block where
   blocks =
     id
 
-instance HasBlocks Pandoc where
+instance AllBlocks Pandoc where
   blocks f (Pandoc m b) =
     Pandoc m <$> traverse f b
 
@@ -824,7 +818,7 @@ instance AsMetaBlocks MetaValue where
                MetaBlocks n -> Just n
                _ -> Nothing)
 
-instance HasBlocks MetaValue where
+instance AllBlocks MetaValue where
   blocks =
     _MetaBlocks . traverse
 
@@ -2104,3 +2098,49 @@ instance AsSpan Inline where
       (\b -> case b of
                 Span x y -> Just (x, y)
                 _ -> Nothing)
+
+----
+
+instance Plated Block where
+  plate f (BlockQuote blx) =
+    BlockQuote <$> traverse f blx
+  plate f (OrderedList attrs blx) =
+    OrderedList attrs <$> traverseOf (each . each) f blx
+  plate f (BulletList blx) =
+    BulletList <$> traverseOf (each . each) f blx
+  plate f (DefinitionList blx) =
+    DefinitionList <$> traverseOf (each . _2 . each . each) f blx
+  plate f (Table a b c h r) =
+    Table a b c <$> traverseOf (each . each) f h <*> traverseOf (each . each . each) f r
+  plate f (Div attrs blx) =
+    Div attrs <$> traverseOf each f blx
+  plate f x =
+    pure x
+  
+instance Plated Inline where
+  plate f (Emph cs) =
+    Emph <$> traverseOf each f cs
+  plate f (Strong cs) =
+    Strong <$> traverseOf each f cs
+  plate f (Strikeout cs) =
+    Strikeout <$> traverseOf each f cs
+  plate f (Superscript cs) =
+    Superscript <$> traverseOf each f cs
+  plate f (Subscript cs) =
+    Subscript <$> traverseOf each f cs
+  plate f (SmallCaps cs) =
+    SmallCaps <$> traverseOf each f cs
+  plate f (Cite cit cs) =
+    Cite cit <$> traverseOf each f cs
+  plate f (Span attrs cs) =
+    Span attrs <$> traverseOf each f cs
+  plate f x =
+    pure x
+
+instance Plated MetaValue where
+  plate f (MetaMap cs) =
+    MetaMap <$> traverseOf each f cs
+  plate f (MetaList cs) =
+    MetaList <$> traverseOf each f cs
+  plate f x =
+    pure x

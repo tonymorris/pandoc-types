@@ -1,5 +1,5 @@
 {-# LANGUAGE OverloadedStrings, DeriveDataTypeable, DeriveGeneric,
-FlexibleContexts, GeneralizedNewtypeDeriving, PatternGuards, CPP, TypeFamilies, FlexibleInstances, MultiParamTypeClasses, TemplateHaskell, RankNTypes #-}
+FlexibleContexts, GeneralizedNewtypeDeriving, PatternGuards, CPP, TypeFamilies, FlexibleInstances, MultiParamTypeClasses #-}
 
 {-
 Copyright (c) 2006-2016, John MacFarlane

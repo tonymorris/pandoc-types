@@ -46,7 +46,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 Definition of 'Pandoc' data structure for format-neutral representation
 of documents.
 -}
-module Text.Pandoc.Definition {- ( Pandoc(..)
+module Text.Pandoc.Definition ( Pandoc(..)
                               , Meta(..)
                               , MetaValue(..)
                               , nullMeta
@@ -71,7 +71,100 @@ module Text.Pandoc.Definition {- ( Pandoc(..)
                               , Citation(..)
                               , CitationMode(..)
                               , pandocTypesVersion
-                              ) -} where
+                              -- * lenses, prisms and traversals
+                              , HasPandoc(..)
+                              , AsPandoc(..)
+                              , AsMeta(..)
+                              , HasMeta(..)
+                              , HasBlockList(..)
+                              , AsBlockList(..)
+                              , AsBlock(..)
+                              , HasBlock(..)
+                              , AllBlocks(..)
+                              , AsMetaValue(..)
+                              , HasMetaValue(..)
+                              , AllMetaValues(..)
+                              , AsMetaMap(..)
+                              , HasMetaMap(..)
+                              , AsMetaList(..)
+                              , AsMetaBool(..)
+                              , AsMetaString(..)
+                              , AsMetaInlines(..)
+                              , AsMetaBlocks(..)
+                              , AsAlignLeft(..)
+                              , AsAlignRight(..)
+                              , AsAlignCenter(..)
+                              , AsAlignDefault(..)
+                              , HasListStartNumber(..)
+                              , HasListNumberStyle(..)
+                              , HasListNumberDelim(..)
+                              , AsDefaultStyle(..)
+                              , AsExample(..)
+                              , AsDecimal(..)
+                              , AsLowerRoman(..)
+                              , AsUpperRoman(..)
+                              , AsLowerAlpha(..)
+                              , AsUpperAlpha(..)
+                              , AsDefaultDelim(..)
+                              , AsPeriod(..)
+                              , AsOneParen(..)
+                              , AsTwoParens(..)
+                              , AsAttr(..)
+                              , AllAttrs(..)
+                              , HasAttrIdentifier(..)
+                              , HasAttrClasses(..)
+                              , HasAttrKeyValuePairs(..)
+                              , HasQuoteType(..)
+                              , AsSingleQuote(..)
+                              , AsDoubleQuote(..)
+                              , HasTargetURL(..)
+                              , HasTargetTitle(..)
+                              , HasMathType(..)
+                              , AsDisplayMath(..)
+                              , AsInlineMath(..)
+                              , HasCitationMode(..)
+                              , AsAuthorInText(..)
+                              , AsSuppressAuthor(..)
+                              , AsNormalCitation(..)
+                              , HasCitation(..)
+                              , HasCitationId(..)
+                              , HasCitationPrefix(..)
+                              , HasCitationSuffix(..)
+                              , AsPlain(..)
+                              , AsPara(..)
+                              , AsLineBlock(..)
+                              , AsCodeBlock(..)
+                              , AsRawBlock(..)
+                              , AsBlockQuote(..)
+                              , AsOrderedList(..)
+                              , AsBulletList(..)
+                              , AsDefinitionList(..)
+                              , AsHeader(..)
+                              , AsHorizontalRule(..)
+                              , AsTable(..)
+                              , AsDiv(..)
+                              , AsNull(..)
+                              , AsStr(..)
+                              , AsEmph(..)
+                              , AsStrong(..)
+                              , AsStrikeout(..)
+                              , AsSuperscript(..)
+                              , AsSubscript(..)
+                              , AsSmallCaps(..)
+                              , AsQuoted(..)
+                              , AsCite(..)
+                              , AsCode(..)
+                              , AsSpace(..)
+                              , AsSoftBreak(..)
+                              , AsLineBreak(..)
+                              , AsPageBreak(..)
+                              , AsMath(..)
+                              , AsRawInline(..)
+                              , AsLink(..)
+                              , AsImage(..)
+                              , AsNote(..)
+                              , AsSpan(..)
+                              ) where
 
 import Control.Lens hiding ((.=))
 import Data.Generics (Data, Typeable)
@@ -613,6 +706,8 @@ pandocTypesVersion = version
 
 ----
 
+-- Pandoc
+
 class HasPandoc a where
   pandocL ::
     Lens'
@@ -633,14 +728,17 @@ instance AsPandoc Pandoc where
   _Pandoc =
     id
 
-instance Wrapped Meta where
-  type Unwrapped Meta = M.Map String MetaValue
-  _Wrapped' =
-    iso
-      (\(Meta x) -> x)
+-- Meta
+
+class AsMeta a where
+  _Meta ::
+    Prism'
+      a
       Meta
 
-instance Meta ~ t => Rewrapped Meta t
+instance AsMeta Meta where
+  _Meta =
+    id
 
 class HasMeta a where
   meta ::
@@ -657,6 +755,15 @@ instance HasMeta Pandoc where
     lens
       (\(Pandoc m _) -> m)
       (\(Pandoc _ b) m -> Pandoc m b)
+
+instance Wrapped Meta where
+  type Unwrapped Meta = M.Map String MetaValue
+  _Wrapped' =
+    iso
+      (\(Meta x) -> x)
+      Meta
+
+instance Meta ~ t => Rewrapped Meta t
 
 instance AsEmpty Meta where
   _Empty =
@@ -676,6 +783,8 @@ instance At Meta where
   at i =
     _Wrapped . at i
 
+-- [Block]
+
 class HasBlockList a where
   blockList ::
     Lens'
@@ -692,6 +801,38 @@ instance HasBlockList Pandoc where
       (\(Pandoc _ b) -> b)
       (\(Pandoc m _) b -> Pandoc m b)
 
+class AsBlockList a where
+  _BlockList ::
+    Prism'
+      a
+      [Block]
+
+instance AsBlockList [Block] where
+  _BlockList =
+    id
+
+-- Block
+
+class AsBlock a where
+  _Block ::
+    Prism'
+      a
+      Block
+
+instance AsBlock Block where
+  _Block =
+    id
+
+class HasBlock a where
+  block ::
+    Lens'
+      a
+      Block
+
+instance HasBlock Block where
+  block =
+    id
+
 class AllBlocks a where
   blocks ::
     Traversal'
@@ -703,8 +844,24 @@ instance AllBlocks Block where
     id
 
 instance AllBlocks Pandoc where
-  blocks f (Pandoc m b) =
-    Pandoc m <$> traverse f b
+  blocks =
+    blockList . traverse
+
+instance AllBlocks MetaValue where
+  blocks =
+    _MetaBlocks . traverse
+
+-- MetaValue
+
+class AsMetaValue a where
+  _MetaValue ::
+    Prism'
+      a
+      MetaValue
+
+instance AsMetaValue MetaValue where
+  _MetaValue =
+    id
 
 class HasMetaValue a where
   metaValue ::
@@ -716,25 +873,31 @@ instance HasMetaValue MetaValue where
   metaValue =
     id
 
-class HasMetaValues a where
+class AllMetaValues a where
   metaValues ::
     Traversal'
       a
       MetaValue
 
-instance HasMetaValues MetaValue where
+instance AllMetaValues MetaValue where
   metaValues =
     id
 
-instance HasMetaValues Meta where
+instance AllMetaValues Meta where
   metaValues =
     meta . _Wrapped . traverse
+
+-- MetaMap
 
 class AsMetaMap a where
   _MetaMap ::
     Prism'
       a
       (M.Map String MetaValue)
+
+instance AsMetaMap (M.Map String MetaValue) where
+  _MetaMap =
+    id
 
 instance AsMetaMap MetaValue where
   _MetaMap =
@@ -747,6 +910,18 @@ instance AsMetaMap MetaValue where
 instance AsMetaMap Meta where
   _MetaMap =
     _Wrapped
+
+class HasMetaMap a where
+  metaMap ::
+    Lens'
+      a
+      (M.Map String MetaValue)
+
+instance HasMetaMap (M.Map String MetaValue) where
+  metaMap =
+    id
+
+-- MetaList
 
 class AsMetaList a where
   _MetaList ::
@@ -762,6 +937,8 @@ instance AsMetaList MetaValue where
                MetaList n -> Just n
                _ -> Nothing)
 
+-- MetaBool
+
 class AsMetaBool a where
   _MetaBool ::
     Prism'
@@ -775,6 +952,8 @@ instance AsMetaBool MetaValue where
       (\m -> case m of
                MetaBool n -> Just n
                _ -> Nothing)
+
+-- MetaString
 
 class AsMetaString a where
   _MetaString ::
@@ -790,6 +969,8 @@ instance AsMetaString MetaValue where
                MetaString n -> Just n
                _ -> Nothing)
 
+-- MetaInlines
+
 class AsMetaInlines a where
   _MetaInlines ::
     Prism'
@@ -803,6 +984,8 @@ instance AsMetaInlines MetaValue where
       (\m -> case m of
                MetaInlines n -> Just n
                _ -> Nothing)
+
+-- MetaBlocks
 
 class AsMetaBlocks a where
   _MetaBlocks ::
@@ -818,9 +1001,7 @@ instance AsMetaBlocks MetaValue where
                MetaBlocks n -> Just n
                _ -> Nothing)
 
-instance AllBlocks MetaValue where
-  blocks =
-    _MetaBlocks . traverse
+-- AlignLeft
 
 class AsAlignLeft a where
   _AlignLeft ::
@@ -842,6 +1023,8 @@ instance AsAlignLeft Alignment where
                 _ -> 
                   Nothing)
 
+-- AlignRight
+
 class AsAlignRight a where
   _AlignRight ::
     Prism'
@@ -861,6 +1044,8 @@ instance AsAlignRight Alignment where
                   Just ()
                 _ -> 
                   Nothing)
+
+-- AlignCenter
 
 class AsAlignCenter a where
   _AlignCenter ::
@@ -882,6 +1067,8 @@ instance AsAlignCenter Alignment where
                 _ -> 
                   Nothing)
 
+-- AlignDefault
+
 class AsAlignDefault a where
   _AlignDefault ::
     Prism'
@@ -902,6 +1089,8 @@ instance AsAlignDefault Alignment where
                 _ -> 
                   Nothing)
 
+-- list start number
+
 class HasListStartNumber a where
   listStartNumber ::
     Lens'
@@ -915,6 +1104,8 @@ instance HasListStartNumber Int where
 instance HasListStartNumber ListAttributes where
   listStartNumber =
     _1
+
+-- list number style
 
 class HasListNumberStyle a where
   listNumberStyle ::
@@ -930,6 +1121,8 @@ instance HasListNumberStyle ListAttributes where
   listNumberStyle =
     _2
 
+-- list number delim
+
 class HasListNumberDelim a where
   listNumberDelim ::
     Lens'
@@ -943,6 +1136,8 @@ instance HasListNumberDelim ListNumberDelim where
 instance HasListNumberDelim ListAttributes where
   listNumberDelim =
     _3
+
+-- DefaultStyle
 
 class AsDefaultStyle a where
   _DefaultStyle ::
@@ -964,6 +1159,8 @@ instance AsDefaultStyle ListNumberStyle where
                 _ -> 
                   Nothing)
 
+-- Example
+
 class AsExample a where
   _Example ::
     Prism'
@@ -983,6 +1180,8 @@ instance AsExample ListNumberStyle where
                   Just ()
                 _ -> 
                   Nothing)
+
+-- Decimal
 
 class AsDecimal a where
   _Decimal ::
@@ -1004,6 +1203,8 @@ instance AsDecimal ListNumberStyle where
                 _ -> 
                   Nothing)
 
+-- LowerRoman
+
 class AsLowerRoman a where
   _LowerRoman ::
     Prism'
@@ -1023,6 +1224,8 @@ instance AsLowerRoman ListNumberStyle where
                   Just ()
                 _ -> 
                   Nothing)
+
+-- UpperRoman
 
 class AsUpperRoman a where
   _UpperRoman ::
@@ -1044,6 +1247,8 @@ instance AsUpperRoman ListNumberStyle where
                 _ -> 
                   Nothing)
 
+-- LowerAlpha
+
 class AsLowerAlpha a where
   _LowerAlpha ::
     Prism'
@@ -1063,6 +1268,8 @@ instance AsLowerAlpha ListNumberStyle where
                   Just ()
                 _ -> 
                   Nothing)
+
+-- UpperAlpha
 
 class AsUpperAlpha a where
   _UpperAlpha ::
@@ -1084,6 +1291,8 @@ instance AsUpperAlpha ListNumberStyle where
                 _ -> 
                   Nothing)
 
+-- DefaultDelim
+
 class AsDefaultDelim a where
   _DefaultDelim ::
     Prism'
@@ -1103,6 +1312,8 @@ instance AsDefaultDelim ListNumberDelim where
                   Just ()
                 _ -> 
                   Nothing)
+
+-- AsPeriod
 
 class AsPeriod a where
   _Period ::
@@ -1124,6 +1335,8 @@ instance AsPeriod ListNumberDelim where
                 _ -> 
                   Nothing)
 
+-- AsOneParen
+
 class AsOneParen a where
   _OneParen ::
     Prism'
@@ -1143,6 +1356,8 @@ instance AsOneParen ListNumberDelim where
                   Just ()
                 _ -> 
                   Nothing)
+
+-- AsTwoParens
 
 class AsTwoParens a where
   _TwoParens ::
@@ -1164,47 +1379,88 @@ instance AsTwoParens ListNumberDelim where
                 _ -> 
                   Nothing)
 
-class AttrIdentifier a where
+-- Attr
+
+class AsAttr a where
+  _Attr ::
+    Prism'
+      a
+      Attr
+
+instance AsAttr Attr where
+  _Attr =
+    id
+
+class AllAttrs a where
+  attrs ::
+    Traversal'
+      a
+      Attr
+
+instance AllAttrs Attr where
+  attrs =
+    id
+   
+instance AllAttrs Block where
+  attrs f (CodeBlock a s) = fmap (\a' -> CodeBlock a' s) (f a)
+  attrs f (Header n a s)  = fmap (\a' -> Header n a' s) (f a)
+  attrs f (Div a s)       = fmap (\a' -> Div a' s) (f a)
+  attrs _ x = pure x
+
+instance AllAttrs Inline where
+  attrs f (Code a s) = fmap (\a'->Code a' s) (f a)
+  attrs f (Span a s) = fmap (\a'->Span a' s) (f a)
+  attrs _ x = pure x
+
+-- AttrIdentifier
+
+class HasAttrIdentifier a where
   attrIdentifier ::
     Lens'
       a
       String
 
-instance AttrIdentifier String where
+instance HasAttrIdentifier String where
   attrIdentifier =
     id
 
-instance AttrIdentifier Attr where
+instance HasAttrIdentifier Attr where
   attrIdentifier =
     _1
 
-class AttrClasses a where
+-- AttrClasses
+
+class HasAttrClasses a where
   attrClasses ::
     Lens'
       a
       [String]
 
-instance AttrClasses [String] where
+instance HasAttrClasses [String] where
   attrClasses =
     id
 
-instance AttrClasses Attr where
+instance HasAttrClasses Attr where
   attrClasses =
     _2
 
-class AttrKeyValuePairs a where
+-- AttrKeyValuePairs
+
+class HasAttrKeyValuePairs a where
   attrKeyValuePairs ::
     Lens'
       a
       [(String, String)]
 
-instance AttrKeyValuePairs [(String, String)] where
+instance HasAttrKeyValuePairs [(String, String)] where
   attrKeyValuePairs =
     id
 
-instance AttrKeyValuePairs Attr where
+instance HasAttrKeyValuePairs Attr where
   attrKeyValuePairs =
     _3
+
+-- Format
 
 instance Wrapped Format where
   type Unwrapped Format = String
@@ -1215,6 +1471,8 @@ instance Wrapped Format where
 
 instance Format ~ t => Rewrapped Format t0
 
+-- QuoteType
+
 class HasQuoteType a where
   quoteType ::
     Lens'
@@ -1224,6 +1482,8 @@ class HasQuoteType a where
 instance HasQuoteType QuoteType where
   quoteType = 
     id
+
+-- SingleQuote
 
 class AsSingleQuote a where
   _SingleQuote ::
@@ -1245,6 +1505,8 @@ instance AsSingleQuote QuoteType where
                 _ -> 
                   Nothing)
 
+-- DoubleQuote
+
 class AsDoubleQuote a where
   _DoubleQuote ::
     Prism'
@@ -1265,6 +1527,8 @@ instance AsDoubleQuote QuoteType where
                 _ -> 
                   Nothing)
 
+-- TargetURL
+
 class HasTargetURL a where
   targetURL ::
     Lens'
@@ -1278,6 +1542,8 @@ instance HasTargetURL String where
 instance HasTargetURL Target where
   targetURL =
     _1
+
+-- TargetTitle
 
 class HasTargetTitle a where
   targetTitle ::
@@ -1293,6 +1559,8 @@ instance HasTargetTitle Target where
   targetTitle =
     _2
 
+-- MathType
+
 class HasMathType a where
   mathType ::
     Lens'
@@ -1302,6 +1570,8 @@ class HasMathType a where
 instance HasMathType MathType where
   mathType =
     id
+
+-- DisplayMath
 
 class AsDisplayMath a where
   _DisplayMath ::
@@ -1323,6 +1593,8 @@ instance AsDisplayMath MathType where
                 _ -> 
                   Nothing)
 
+-- InlineMath
+
 class AsInlineMath a where
   _InlineMath ::
     Prism'
@@ -1343,6 +1615,8 @@ instance AsInlineMath MathType where
                 _ -> 
                   Nothing)
 
+-- CitationMode
+
 class HasCitationMode a where
   citationMode ::
     Lens'
@@ -1352,6 +1626,14 @@ class HasCitationMode a where
 instance HasCitationMode CitationMode where
   citationMode =
     id
+
+instance HasCitationMode Citation where
+  citationMode =
+    lens
+      (\(Citation _ _ _ m _ _) -> m)
+      (\(Citation i p s _ n h) m -> Citation i p s m n h)
+
+-- AuthorInText
 
 class AsAuthorInText a where
   _AuthorInText ::
@@ -1373,6 +1655,8 @@ instance AsAuthorInText CitationMode where
                 _ -> 
                   Nothing)
 
+-- SuppressAuthor
+
 class AsSuppressAuthor a where
   _SuppressAuthor ::
     Prism'
@@ -1392,6 +1676,8 @@ instance AsSuppressAuthor CitationMode where
                   Just ()
                 _ -> 
                   Nothing)
+
+-- NormalCitation
 
 class AsNormalCitation a where
   _NormalCitation ::
@@ -1413,6 +1699,8 @@ instance AsNormalCitation CitationMode where
                 _ -> 
                   Nothing)
 
+-- Citation
+
 class HasCitation a where
   citation ::
     Lens'
@@ -1422,6 +1710,8 @@ class HasCitation a where
 instance HasCitation Citation where
   citation =
     id
+
+-- CitationId
 
 class HasCitationId a where
   citationId ::
@@ -1439,6 +1729,8 @@ instance HasCitationId Citation where
       (\(Citation i _ _ _ _ _) -> i)
       (\(Citation _ p s m n h) i -> Citation i p s m n h)
 
+-- CitationPrefix
+
 class HasCitationPrefix a where
   citationPrefix ::
     Lens'
@@ -1454,6 +1746,8 @@ instance HasCitationPrefix Citation where
     lens
       (\(Citation _ p _ _ _ _) -> p)
       (\(Citation i _ s m n h) p -> Citation i p s m n h)
+
+-- CitationSuffix
 
 class HasCitationSuffix a where
   citationSuffix ::
@@ -1471,21 +1765,7 @@ instance HasCitationSuffix Citation where
       (\(Citation _ _ s _ _ _) -> s)
       (\(Citation i p _ m n h) s -> Citation i p s m n h)
 
-instance HasCitationMode Citation where
-  citationMode =
-    lens
-      (\(Citation _ _ _ m _ _) -> m)
-      (\(Citation i p s _ n h) m -> Citation i p s m n h)
-
-class HasBlock a where
-  block ::
-    Lens'
-      a
-      Block
-
-instance HasBlock Block where
-  block =
-    id
+-- Plain
 
 class AsPlain a where
   _Plain ::
@@ -1505,6 +1785,8 @@ instance AsPlain Block where
                 Plain x -> Just x
                 _ -> Nothing)
 
+-- Para
+
 class AsPara a where
   _Para ::
     Prism'
@@ -1522,6 +1804,8 @@ instance AsPara Block where
       (\b -> case b of
                 Para x -> Just x
                 _ -> Nothing)
+
+-- LineBlock
 
 class AsLineBlock a where
   _LineBlock ::
@@ -1541,6 +1825,8 @@ instance AsLineBlock Block where
                 LineBlock x -> Just x
                 _ -> Nothing)
 
+-- CodeBlock
+
 class AsCodeBlock a where
   _CodeBlock ::
     Prism'
@@ -1558,6 +1844,8 @@ instance AsCodeBlock Block where
       (\b -> case b of
                 CodeBlock x y -> Just (x, y)
                 _ -> Nothing)
+
+-- RawBlock
 
 class AsRawBlock a where
   _RawBlock ::
@@ -1577,6 +1865,8 @@ instance AsRawBlock Block where
                 RawBlock x y -> Just (x, y)
                 _ -> Nothing)
 
+-- BlockQuote
+
 class AsBlockQuote a where
   _BlockQuote ::
     Prism'
@@ -1594,6 +1884,8 @@ instance AsBlockQuote Block where
       (\b -> case b of
                 BlockQuote x -> Just x
                 _ -> Nothing)
+
+-- OrderedList
 
 class AsOrderedList a where
   _OrderedList ::
@@ -1613,6 +1905,8 @@ instance AsOrderedList Block where
                 OrderedList x y -> Just (x, y)
                 _ -> Nothing)
 
+-- BulletList
+
 class AsBulletList a where
   _BulletList ::
     Prism'
@@ -1630,6 +1924,8 @@ instance AsBulletList Block where
       (\b -> case b of
                 BulletList x -> Just x
                 _ -> Nothing)
+
+-- DefinitionList
 
 class AsDefinitionList a where
   _DefinitionList ::
@@ -1649,6 +1945,8 @@ instance AsDefinitionList Block where
                 DefinitionList x -> Just x
                 _ -> Nothing)
 
+-- Header
+
 class AsHeader a where
   _Header ::
     Prism'
@@ -1666,6 +1964,8 @@ instance AsHeader Block where
       (\b -> case b of
                 Header x y z -> Just (x, y, z)
                 _ -> Nothing)
+
+-- HorizontalRule
 
 class AsHorizontalRule a where
   _HorizontalRule ::
@@ -1685,6 +1985,8 @@ instance AsHorizontalRule Block where
                 HorizontalRule -> Just ()
                 _ -> Nothing)
 
+-- Table
+
 class AsTable a where
   _Table ::
     Prism'
@@ -1702,6 +2004,8 @@ instance AsTable Block where
       (\b -> case b of
                 Table x y z v w -> Just (x, y, z, v, w)
                 _ -> Nothing)
+
+-- Div
 
 class AsDiv a where
   _Div ::
@@ -1721,6 +2025,8 @@ instance AsDiv Block where
                 Div x y -> Just (x, y)
                 _ -> Nothing)
 
+-- Null
+
 class AsNull a where
   _Null ::
     Prism'
@@ -1738,6 +2044,8 @@ instance AsNull Block where
       (\b -> case b of
                 Null -> Just ()
                 _ -> Nothing)
+
+-- Str
 
 class AsStr a where
   _Str ::
@@ -1757,6 +2065,8 @@ instance AsStr Inline where
                Str x -> Just x
                _ -> Nothing)
 
+-- Emph
+
 class AsEmph a where
   _Emph ::
     Prism'
@@ -1774,6 +2084,8 @@ instance AsEmph Inline where
       (\b -> case b of
                Emph x -> Just x
                _ -> Nothing)
+
+-- Strong
 
 class AsStrong a where
   _Strong ::
@@ -1793,6 +2105,8 @@ instance AsStrong Inline where
                Strong x -> Just x
                _ -> Nothing)
 
+-- Strikeout
+
 class AsStrikeout a where
   _Strikeout ::
     Prism'
@@ -1810,6 +2124,8 @@ instance AsStrikeout Inline where
       (\b -> case b of
                Strikeout x -> Just x
                _ -> Nothing)
+
+-- Superscript
 
 class AsSuperscript a where
   _Superscript ::
@@ -1829,6 +2145,8 @@ instance AsSuperscript Inline where
                Superscript x -> Just x
                _ -> Nothing)
 
+-- Subscript
+
 class AsSubscript a where
   _Subscript ::
     Prism'
@@ -1846,6 +2164,8 @@ instance AsSubscript Inline where
       (\b -> case b of
                Subscript x -> Just x
                _ -> Nothing)
+
+-- SmallCaps
 
 class AsSmallCaps a where
   _SmallCaps ::
@@ -1865,6 +2185,8 @@ instance AsSmallCaps Inline where
                SmallCaps x -> Just x
                _ -> Nothing)
 
+-- Quoted
+
 class AsQuoted a where
   _Quoted ::
     Prism'
@@ -1882,6 +2204,8 @@ instance AsQuoted Inline where
       (\b -> case b of
                 Quoted x y -> Just (x, y)
                 _ -> Nothing)
+
+-- Cite
 
 class AsCite a where
   _Cite ::
@@ -1901,6 +2225,8 @@ instance AsCite Inline where
                 Cite x y -> Just (x, y)
                 _ -> Nothing)
 
+-- Code
+
 class AsCode a where
   _Code ::
     Prism'
@@ -1918,6 +2244,8 @@ instance AsCode Inline where
       (\b -> case b of
                 Code x y -> Just (x, y)
                 _ -> Nothing)
+
+-- Space
 
 class AsSpace a where
   _Space ::
@@ -1937,6 +2265,8 @@ instance AsSpace Inline where
                 Space -> Just ()
                 _ -> Nothing)
 
+-- SoftBreak
+
 class AsSoftBreak a where
   _SoftBreak ::
     Prism'
@@ -1954,6 +2284,8 @@ instance AsSoftBreak Inline where
       (\b -> case b of
                 SoftBreak -> Just ()
                 _ -> Nothing)
+
+-- LineBreak
 
 class AsLineBreak a where
   _LineBreak ::
@@ -1973,6 +2305,8 @@ instance AsLineBreak Inline where
                 LineBreak -> Just ()
                 _ -> Nothing)
 
+-- PageBreak
+
 class AsPageBreak a where
   _PageBreak ::
     Prism'
@@ -1990,6 +2324,8 @@ instance AsPageBreak Inline where
       (\b -> case b of
                 PageBreak -> Just ()
                 _ -> Nothing)
+
+-- Math
 
 class AsMath a where
   _Math ::
@@ -2009,6 +2345,8 @@ instance AsMath Inline where
                 Math x y -> Just (x, y)
                 _ -> Nothing)
 
+-- RawInline
+
 class AsRawInline a where
   _RawInline ::
     Prism'
@@ -2026,6 +2364,8 @@ instance AsRawInline Inline where
       (\b -> case b of
                 RawInline x y -> Just (x, y)
                 _ -> Nothing)
+
+-- Link
 
 class AsLink a where
   _Link ::
@@ -2045,6 +2385,8 @@ instance AsLink Inline where
                 Link x y z -> Just (x, y, z)
                 _ -> Nothing)
 
+-- Image
+
 class AsImage a where
   _Image ::
     Prism'
@@ -2063,6 +2405,8 @@ instance AsImage Inline where
                 Image x y z -> Just (x, y, z)
                 _ -> Nothing)
 
+-- Note
+
 class AsNote a where
   _Note ::
     Prism'
@@ -2080,6 +2424,8 @@ instance AsNote Inline where
       (\b -> case b of
                Note x -> Just x
                _ -> Nothing)
+
+-- Span
 
 class AsSpan a where
   _Span ::
